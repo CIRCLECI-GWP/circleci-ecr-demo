@@ -7,9 +7,8 @@ workflows:
   build_and_push_image:
     jobs:
       - aws-ecr/build-and-push-image:
-          context: aws-dev
-          create-repo: true
+          role-arn: arn:aws:iam::615875458684:role/gitlab-ci-iceberg-sdk
           dockerfile: Dockerfile
           path: .
-          repo: circleci-ecr-demo
+          repo: sai-test
           tag: "$CIRCLE_SHA1"
