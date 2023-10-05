@@ -12,6 +12,7 @@ workflows:
           auth:
             - aws-cli/setup:
                 role_arn : $role_arn
+                role_session_name: ecr
           context: 
              - aws-creds
              - role_arn
