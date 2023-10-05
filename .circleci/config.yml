@@ -1,15 +1,22 @@
 version: 2.1
 
 orbs:
-  aws-ecr: circleci/aws-ecr@8.1.3
+  aws-cli: circleci/aws-cli@4.0
+  aws-ecr: circleci/aws-ecr@9.0
 
 workflows:
   build_and_push_image:
     jobs:
-      - aws-ecr/build-and-push-image:
-          context: aws-creds
-          create-repo: true
+      - aws-ecr/build_and_push_image:
+          account_id: $AWS_ACCOUNT_ID
+          auth:
+            - aws-cli/setup:
+                role_arn : $role_arn
+          context: 
+             - aws-creds
+             - role_arn
           dockerfile: Dockerfile
           path: .
-          repo: circleci-ecr-demo
+          repo: sai-test
+          region: us-east-1
           tag: "$CIRCLE_SHA1"
