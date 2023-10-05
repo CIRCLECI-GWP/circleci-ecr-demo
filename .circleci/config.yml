@@ -19,4 +19,4 @@ workflows:
           path: .
           repo: sai-test
           region: us-east-1
-          tag: "$CIRCLE_SHA1"
+          tag: "$CIRCLE_SHA1_SHORT"
