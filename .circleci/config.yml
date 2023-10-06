@@ -4,21 +4,17 @@ orbs:
   aws-cli: circleci/aws-cli@4.0
   aws-ecr: circleci/aws-ecr@9.0
 
-
-# executors:
-#   docker:
-#     docker:
-#       - image: 
-
 jobs:
   build_and_push_image:
+    # docker:
+    #   - image: circleci/python:3.7
     steps:
       - checkout
       - aws-ecr/build_and_push_image:
           account_id: $AWS_ACCOUNT_ID
           auth:
             - aws-cli/setup:
-                role_arn : $role_arn
+                role_arn: $role_arn
                 role_session_name: ecr
           dockerfile: Dockerfile
           path: .
@@ -26,23 +22,29 @@ jobs:
           region: us-east-1
           tag: "$CIRCLE_SHA1"
 
-
-
 workflows:
-  # build:
-  #   jobs:
-  #     - build:
-  #         - run: 
-  #            script:
-  #                 - export SHORT_COMMIT_HASH=$(echo $CIRCLE_SHA1 | cut -c 1-8) 
-  #                 - export COMMIT_EPOCH=$(git show -s --format=%ct $SHORT_COMMIT_HASH)
-  #                 - export VERSION=$(date -d @$COMMIT_EPOCH +"%F").$SHORT_COMMIT_HASH
-  #                 - docker build -t $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/sai-test:$VERSION .
+  version: 2
+  build_and_push_image:
+    jobs:
+      - build_and_push_image:
+          context: role_arn
+
+
+# workflows:
+#   # build:
+#   #   jobs:
+#   #     - build:
+#   #         - run: 
+#   #            script:
+#   #                 - export SHORT_COMMIT_HASH=$(echo $CIRCLE_SHA1 | cut -c 1-8) 
+#   #                 - export COMMIT_EPOCH=$(git show -s --format=%ct $SHORT_COMMIT_HASH)
+#   #                 - export VERSION=$(date -d @$COMMIT_EPOCH +"%F").$SHORT_COMMIT_HASH
+#   #                 - docker build -t $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/sai-test:$VERSION .
   
 
 
-  build:
-    jobs:
-      - build_and_push_image:
-        context: role_arn
+#   build:
+#     jobs:
+#       - build_and_push_image:
+#         context: role_arn
 
