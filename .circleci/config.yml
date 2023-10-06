@@ -9,6 +9,8 @@ jobs:
     docker:
       - image: docker:latest
     steps:
+      - setup_remote_docker:
+          version: 20.10.11
       - checkout
       - aws-ecr/build_and_push_image:
           account_id: $AWS_ACCOUNT_ID
