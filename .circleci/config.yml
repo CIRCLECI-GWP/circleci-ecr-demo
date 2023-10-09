@@ -34,6 +34,11 @@ jobs:
       - setup_remote_docker:
           version: 20.10.11
       - checkout
+      - run: |
+            export SHORT_COMMIT_HASH=$(echo $CIRCLE_SHA1 | cut -c 1-8)
+            export COMMIT_EPOCH=$(git show -s --format=%ct $SHORT_COMMIT_HASH)
+            export VERSION=$(date -d @$COMMIT_EPOCH +"%F").$SHORT_COMMIT_HASH
+         
       - aws-ecr/build_and_push_image:
           account_id: $AWS_ACCOUNT_ID
           auth:
@@ -44,7 +49,7 @@ jobs:
           path: .
           repo: sai-test
           region: us-east-1
-          tag: "$CIRCLE_SHA1"
+          tag: "$VERSION,latest"
 
 workflows:
 
@@ -54,5 +59,3 @@ workflows:
           context: role_arn
       - build_and_push_image:
           context: role_arn
-          requires:
-              - build
