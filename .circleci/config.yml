@@ -49,7 +49,7 @@ jobs:
           path: .
           repo: sai-test
           region: us-east-1
-          tag: "$VERSION,latest"
+          tag: "$CIRCLE_SHA1,latest"
 
 workflows:
 
