@@ -4,7 +4,29 @@ orbs:
   aws-cli: circleci/aws-cli@4.0
   aws-ecr: circleci/aws-ecr@9.0
 
+
 jobs:
+  build:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - setup_remote_docker:
+          version: 20.10.11
+      - checkout
+      - aws-ecr/build_image:
+          account_id: $AWS_ACCOUNT_ID
+          auth:
+            - aws-cli/setup:
+                role_arn: $role_arn
+                role_session_name: ecr
+          dockerfile: Dockerfile
+          path: .
+          repo: sai-test
+          region: us-east-1
+          tag: "$CIRCLE_SHA1"
+
+
+
   build_and_push_image:
     docker:
       - image: cimg/base:stable
