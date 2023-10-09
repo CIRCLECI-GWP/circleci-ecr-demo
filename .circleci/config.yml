@@ -15,10 +15,10 @@ jobs:
       - checkout
       - aws-ecr/build_image:
           account_id: $AWS_ACCOUNT_ID
-          auth:
-            - aws-cli/setup:
-                role_arn: $role_arn
-                role_session_name: ecr
+          # auth:
+          #   - aws-cli/setup:
+          #       role_arn: $role_arn
+          #       role_session_name: ecr
           dockerfile: Dockerfile
           path: .
           repo: sai-test
@@ -47,28 +47,12 @@ jobs:
           tag: "$CIRCLE_SHA1"
 
 workflows:
-  version: 2
+
   build_and_push_image:
     jobs:
+      - build:
+          context: role_arn
       - build_and_push_image:
           context: role_arn
-
-
-# workflows:
-#   # build:
-#   #   jobs:
-#   #     - build:
-#   #         - run: 
-#   #            script:
-#   #                 - export SHORT_COMMIT_HASH=$(echo $CIRCLE_SHA1 | cut -c 1-8) 
-#   #                 - export COMMIT_EPOCH=$(git show -s --format=%ct $SHORT_COMMIT_HASH)
-#   #                 - export VERSION=$(date -d @$COMMIT_EPOCH +"%F").$SHORT_COMMIT_HASH
-#   #                 - docker build -t $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/sai-test:$VERSION .
-  
-
-
-#   build:
-#     jobs:
-#       - build_and_push_image:
-#         context: role_arn
-
+          requires:
+              - build
