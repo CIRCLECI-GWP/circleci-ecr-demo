@@ -55,7 +55,7 @@ workflows:
 
   build_and_push_image:
     jobs:
-      - build:
-          context: role_arn
+      # - build:
+      #     context: role_arn
       - build_and_push_image:
           context: role_arn
