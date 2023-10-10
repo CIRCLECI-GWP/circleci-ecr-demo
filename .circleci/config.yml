@@ -73,21 +73,21 @@ jobs:
 
 workflows:
   
-  # build:
-  #   jobs:
-  #     - build:
-  #         context: role_arn
-  #         push_image: false
-  #         filters:  
-  #           branches:
-  #             ignore:
-  #               - master      
+  build:
+    jobs:
+      - build:
+          context: role_arn
+          push_image: false
+          filters:  
+            branches:
+              ignore:
+                - master      
 
-  #     - snyk_scan:
-  #         name: Snyk-scan for security issues
-  #         requires:
-  #           - build
-  #         context: snyk   
+      - snyk_scan:
+          name: Snyk-scan for security issues
+          requires:
+            - build
+          context: snyk   
 
   build_and_deploy_lambda:
     jobs:
@@ -95,6 +95,10 @@ workflows:
           name: Build and push image to ECR
           context: role_arn
           push_image: true
+          filters:  
+            branches:
+              only:
+                - master
 
       - snyk_scan:
           name: Snyk-scan for security issues
