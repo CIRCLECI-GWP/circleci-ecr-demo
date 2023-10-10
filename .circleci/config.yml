@@ -73,21 +73,21 @@ jobs:
 
 workflows:
   
-  build:
-    jobs:
-      - build:
-          context: role_arn
-          push_image: false
-          filters:  
-            branches:
-              ignore:
-                - master      
+  # build:
+  #   jobs:
+  #     - build:
+  #         context: role_arn
+  #         push_image: false
+  #         filters:  
+  #           branches:
+  #             ignore:
+  #               - master      
 
-      - snyk_scan:
-          name: Snyk-scan for security issues
-          requires:
-            - build
-          context: snyk   
+  #     - snyk_scan:
+  #         name: Snyk-scan for security issues
+  #         requires:
+  #           - build
+  #         context: snyk   
 
   build_and_deploy_lambda:
     jobs:
@@ -95,16 +95,19 @@ workflows:
           name: Build and push image to ECR
           context: role_arn
           push_image: true
+
       - snyk_scan:
           name: Snyk-scan for security issues
           requires:
             - Build and push image to ECR
           context: snyk
+
       - hold: 
           name: Approve for staging-lambda deployment
           type: approval
           requires:
             - Build and push image to ECR
+
       - deploy_lambda:
           name: Deploying into staging-lambda
           lambda_function_name : sai-test
@@ -117,6 +120,7 @@ workflows:
           type: approval
           requires:
             - Build and push image to ECR
+
       - deploy_lambda:
           name: Deploying into production-lambda
           lambda_function_name : production-lambda
