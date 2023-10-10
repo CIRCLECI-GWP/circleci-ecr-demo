@@ -27,7 +27,7 @@ jobs:
           auth:
             - aws-cli/setup:
                 role_arn: $role_arn
-                role_session_name: ecr
+                role_session_name: AWSCLI-Session
           dockerfile: Dockerfile
           path: .
           repo: sai-test
@@ -63,24 +63,24 @@ jobs:
       #     at: ~/
       - aws-cli/setup:
           role_arn: $role_arn
-          role_session_name: lambda
+          role_session_name: AWSCLI-Session
       - run:
           name: Deploying new image to lambda function
-          command: aws lambda update-function-code --function-name sai-test --image-uri 615875458684.dkr.ecr.us-east-1.amazonaws.com/sai-test:latest
+          command: aws lambda update-function-code --function-name sai-test --image-uri 615875458684.dkr.ecr.us-east-1.amazonaws.com/sai-test:$CIRCLE_SHA1  --region us-east-1
 
 
 workflows:
   
-  build:
-    jobs:
-      - build:
-          context: role_arn
-          push_image: false
-      - snyk_scan:
-          name: Snyk-scan for security issues
-          requires:
-            - build
-          context: snyk          
+  # build:
+  #   jobs:
+  #     - build:
+  #         context: role_arn
+  #         push_image: false
+  #     - snyk_scan:
+  #         name: Snyk-scan for security issues
+  #         requires:
+  #           - build
+  #         context: snyk          
 
   build_and_push_image:
     jobs:
