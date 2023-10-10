@@ -13,9 +13,6 @@ executors:
 jobs:
   build:
     executor: docker
-    # docker:
-    #   - image: cimg/base:stable
-
     parameters:
         push_image:
           type: boolean
@@ -51,14 +48,13 @@ jobs:
     steps:
       - attach_workspace:
           at: ~/
-      # - run:
-      #     name: Install Zip & Sudo
-      #     command: apt-get update && apt-get install -y zip sudo
       - snyk/scan:
           monitor-on-build: << parameters.monitor-on-build >>
           additional-arguments: --prune-repeated-subdependencies --all-projects
           fail-on-issues: false
           organization: $SNYK_ORG
+
+# deploy_lambda
 
 
 workflows:
@@ -77,11 +73,12 @@ workflows:
   build_and_push_image:
     jobs:
       - build:
+          name: Build and push image to ECR
           context: role_arn
           push_image: true
       - snyk_scan:
           name: Snyk-scan for security issues
           requires:
-            - build
+            - Build and push image to ECR
           context: snyk
 
