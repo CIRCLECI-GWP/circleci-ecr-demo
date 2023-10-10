@@ -57,6 +57,8 @@ jobs:
   ecr_push:
     executor: docker
     steps:
+      - setup_remote_docker:
+          version: 20.10.11
       - attach_workspace:
           at: ~/
       - aws-cli/setup:
