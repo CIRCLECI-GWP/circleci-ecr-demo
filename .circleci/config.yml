@@ -3,11 +3,18 @@ version: 2.1
 orbs:
   aws-cli: circleci/aws-cli@4.0
   aws-ecr: circleci/aws-ecr@9.0
+  snyk: snyk/snyk@2.0.1 
 
-jobs:
-  build_and_push_image:
+executors:
+  docker:
     docker:
       - image: cimg/base:stable
+
+jobs:
+  build:
+    executor: docker
+    # docker:
+    #   - image: cimg/base:stable
 
     parameters:
         push_image:
@@ -17,16 +24,7 @@ jobs:
     steps:
       - setup_remote_docker:
           version: 20.10.11
-      - checkout 
-
-      - run: |
-
-         SHORT_COMMIT_HASH=$(echo $CIRCLE_SHA1 | cut -c 1-8)
-         CURRENT_DATE=$(date +"%Y%m%d")   
-         IMAGE_TAG="$SHORT_COMMIT_HASH-$CURRENT_DATE"
-    
-         echo "Generated Docker image tag: $IMAGE_TAG"
-              
+      - checkout               
       - aws-ecr/build_and_push_image:
           account_id: $AWS_ACCOUNT_ID
           auth:
@@ -37,21 +35,53 @@ jobs:
           path: .
           repo: sai-test
           region: us-east-1
-          tag: "$IMAGE_TAG,latest"
+          tag: "$CIRCLE_SHA1,latest"
           push_image: << parameters.push_image >>
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - project/
+
+  snyk_scan:
+    executor: docker
+    parameters:
+      monitor-on-build:
+        type: boolean
+        default: false
+    steps:
+      - attach_workspace:
+          at: ~/
+      - run:
+          name: Install Zip & Sudo
+          command: apt-get update && apt-get install -y zip sudo
+      - snyk/scan:
+          monitor-on-build: << parameters.monitor-on-build >>
+          additional-arguments: --prune-repeated-subdependencies --all-projects
+          fail-on-issues: false
+          organization: $SNYK_ORG
 
 
 workflows:
   
-  # build:
-  #   jobs:
-  #     - build_and_push_image:
-  #         context: role_arn
-  #         push_image: false
+  build:
+    jobs:
+      - build:
+          context: role_arn
+          push_image: false
+      - snyk_scan:
+          name: Snyk-scan for security issues
+          requires:
+            - build
+          context: snyk          
 
   build_and_push_image:
     jobs:
-      - build_and_push_image:
+      - build:
           context: role_arn
           push_image: true
+      - snyk_scan:
+          name: Snyk-scan for security issues
+          requires:
+            - build
+          context: snyk
 
