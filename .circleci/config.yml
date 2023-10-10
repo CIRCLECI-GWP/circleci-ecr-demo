@@ -51,7 +51,7 @@ jobs:
           path: .
           repo: sai-test
           region: us-east-1
-          tag: "$CIRCLE_SHA1,$VERSION,latest"
+          tag: "$VERSION"
 
 workflows:
 
