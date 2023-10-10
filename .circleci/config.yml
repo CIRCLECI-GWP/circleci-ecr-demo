@@ -58,15 +58,17 @@ jobs:
     executor: docker
     environment:
       AWS_ACCOUNT_ID: 615875458684
+    parameters:
+      lambda_function_name:
+        type: string
+        default: none
     steps:
-      # - attach_workspace:
-      #     at: ~/
       - aws-cli/setup:
           role_arn: $role_arn
           role_session_name: AWSCLI-Session
       - run:
           name: Deploying new image to lambda function
-          command: aws lambda update-function-code --function-name sai-test --image-uri 615875458684.dkr.ecr.us-east-1.amazonaws.com/sai-test:$CIRCLE_SHA1  --region us-east-1
+          command: aws lambda update-function-code --function-name << parameters.lambda_function_name >> --image-uri 615875458684.dkr.ecr.us-east-1.amazonaws.com/sai-test:$CIRCLE_SHA1 --region us-east-1
 
 
 workflows:
@@ -95,6 +97,7 @@ workflows:
           context: snyk
       - deploy_lambda:
           name: Deploy lambda
+          lambda_function_name : sai-test
           requires:
             - Build and push image to ECR
             - Snyk-scan for security issues
