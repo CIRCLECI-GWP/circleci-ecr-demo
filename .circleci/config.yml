@@ -38,6 +38,7 @@ jobs:
             export SHORT_COMMIT_HASH=$(echo $CIRCLE_SHA1 | cut -c 1-8)
             export COMMIT_EPOCH=$(git show -s --format=%ct $SHORT_COMMIT_HASH)
             export VERSION=$(date -d @$COMMIT_EPOCH +"%F").$SHORT_COMMIT_HASH
+            echo $VERSION
          
       - aws-ecr/build_and_push_image:
           account_id: $AWS_ACCOUNT_ID
@@ -46,6 +47,7 @@ jobs:
                 role_arn: $role_arn
                 role_session_name: ecr
           dockerfile: Dockerfile
+          push_image: false
           path: .
           repo: sai-test
           region: us-east-1
