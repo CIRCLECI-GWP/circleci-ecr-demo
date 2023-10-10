@@ -22,6 +22,9 @@ jobs:
       - setup_remote_docker:
           version: 20.10.11
       - checkout   
+      - aws-cli/setup:
+            role_arn: $role_arn
+            role_session_name: AWSCLI-Session
       - run:
           name: codeartifact login
           command: |
@@ -29,7 +32,7 @@ jobs:
       - aws-ecr/build_and_push_image:
           account_id: $AWS_ACCOUNT_ID
           auth:
-            - aws-cli/setup:
+              - aws-cli/setup:
                 role_arn: $role_arn
                 role_session_name: AWSCLI-Session
           dockerfile: Dockerfile
