@@ -1,7 +1,7 @@
 version: 2.1
 
 orbs:
-  aws-cli: circleci/aws-cli@4.0
+  aws-cli: circleci/aws-cli@4.1.1
   aws-ecr: circleci/aws-ecr@9.0
   snyk: snyk/snyk@2.0.1 
 
@@ -54,7 +54,19 @@ jobs:
           fail-on-issues: false
           organization: $SNYK_ORG
 
-# deploy_lambda
+  deploy_lambda:
+    executor: docker
+    environment:
+      AWS_ACCOUNT_ID: 615875458684
+    steps:
+      # - attach_workspace:
+      #     at: ~/
+      - aws-cli/setup:
+          role_arn: $role_arn
+          role_session_name: lambda
+      - run:
+          name: Deploying new image to lambda function
+          command: aws lambda update-function-code --function-name sai-test --image-uri $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/sai-test:latest
 
 
 workflows:
@@ -81,4 +93,8 @@ workflows:
           requires:
             - Build and push image to ECR
           context: snyk
-
+      - deploy_lambda:
+          name: Deploy lambda
+          requires:
+            - Build and push image to ECR
+          context: role_arn
