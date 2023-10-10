@@ -51,9 +51,9 @@ jobs:
     steps:
       - attach_workspace:
           at: ~/
-      - run:
-          name: Install Zip & Sudo
-          command: apt-get update && apt-get install -y zip sudo
+      # - run:
+      #     name: Install Zip & Sudo
+      #     command: apt-get update && apt-get install -y zip sudo
       - snyk/scan:
           monitor-on-build: << parameters.monitor-on-build >>
           additional-arguments: --prune-repeated-subdependencies --all-projects
