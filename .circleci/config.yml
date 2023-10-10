@@ -13,6 +13,8 @@ executors:
 jobs:
   build:
     executor: docker
+    environment:
+      AWS_DEFAULT_REGION: us-east-1
     parameters:
         push_image:
           type: boolean
@@ -32,9 +34,11 @@ jobs:
       - aws-ecr/build_and_push_image:
           account_id: $AWS_ACCOUNT_ID
           auth:
-              - aws-cli/setup:
-                role_arn: $role_arn
-                role_session_name: AWSCLI-Session
+              - aws-cli/role_arn_setup:
+                 profile_name: default
+                 role_arn: $role_arn
+                 
+
           dockerfile: Dockerfile
           path: .
           repo: sai-test
