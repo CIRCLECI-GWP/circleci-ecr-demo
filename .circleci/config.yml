@@ -81,6 +81,7 @@ workflows:
           filters:  
             branches:
               ignore:
+                - main
                 - master      
 
       - snyk_scan:
@@ -98,6 +99,7 @@ workflows:
           filters:  
             branches:
               only:
+                - main
                 - master
 
       - snyk_scan:
