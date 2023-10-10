@@ -54,6 +54,22 @@ jobs:
           fail-on-issues: false
           organization: $SNYK_ORG
 
+  ecr_push:
+    executor: docker
+    steps:
+      - attach_workspace:
+          at: ~/
+      - aws-cli/setup:
+            role_arn: $role_arn
+            role_session_name: AWSCLI-Session
+      - aws-ecr/push_image:
+          account_id: $AWS_ACCOUNT_ID
+          repo: sai-test
+          region: us-east-1
+          tag: "$CIRCLE_SHA1,latest"
+
+
+
   deploy_lambda:
     executor: docker
     environment:
@@ -68,23 +84,42 @@ jobs:
           role_session_name: AWSCLI-Session
       - run:
           name: Deploying new image to lambda function
-          command: aws lambda update-function-code --function-name << parameters.lambda_function_name >> --image-uri 615875458684.dkr.ecr.us-east-1.amazonaws.com/sai-test:$CIRCLE_SHA1 --region us-east-1
+          command: aws lambda update-function-code --function-name << parameters.lambda_function_name >> --image-uri $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/sai-test:$CIRCLE_SHA1 --region us-east-1
 
 
 workflows:
   
-  # build:
-  #   jobs:
-  #     - build:
-  #         context: role_arn
-  #         push_image: false
-  #     - snyk_scan:
-  #         name: Snyk-scan for security issues
-  #         requires:
-  #           - build
-  #         context: snyk          
+  build:
+    jobs:
+      - build:
+          context: role_arn
+          push_image: false
+          filters:  
+            branches:
+              ignore:
+                - master      
 
-  build_and_push_image:
+      - snyk_scan:
+          name: Snyk-scan for security issues
+          requires:
+            - build
+          context: snyk   
+
+
+      - hold:
+          name: Approve to push image to ECR
+          type: approval
+          requires:
+            - Snyk-scan for security issues
+      
+      - ecr_push:
+          name: Push image to ECR
+          requires:
+            - Approve to push image to ECR
+          context: role_arn
+
+
+  build_and_deploy_lambda:
     jobs:
       - build:
           name: Build and push image to ECR
