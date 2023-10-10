@@ -56,8 +56,6 @@ jobs:
 
   deploy_lambda:
     executor: docker
-    environment:
-      AWS_ACCOUNT_ID: 615875458684
     parameters:
       lambda_function_name:
         type: string
@@ -125,7 +123,7 @@ workflows:
 
       - deploy_lambda:
           name: Deploying into production-lambda
-          lambda_function_name : production-lambda
+          lambda_function_name : sai-test
           context: role_arn
           requires:
             - Approve for production-lambda deployment
