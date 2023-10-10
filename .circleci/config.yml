@@ -51,7 +51,7 @@ jobs:
           path: .
           repo: sai-test
           region: us-east-1
-          tag: "$VERSION"
+          tag: "${VERSION}"
 
 workflows:
 
