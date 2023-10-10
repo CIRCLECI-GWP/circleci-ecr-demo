@@ -17,7 +17,16 @@ jobs:
     steps:
       - setup_remote_docker:
           version: 20.10.11
-      - checkout               
+      - checkout 
+
+      - run: |
+
+         SHORT_COMMIT_HASH=$(echo $CIRCLE_SHA1 | cut -c 1-8)
+         CURRENT_DATE=$(date +"%Y%m%d")   
+         IMAGE_TAG="$SHORT_COMMIT_HASH-$CURRENT_DATE"
+    
+         echo "Generated Docker image tag: $IMAGE_TAG"
+              
       - aws-ecr/build_and_push_image:
           account_id: $AWS_ACCOUNT_ID
           auth:
@@ -28,17 +37,17 @@ jobs:
           path: .
           repo: sai-test
           region: us-east-1
-          tag: "$CIRCLE_SHA1,latest"
+          tag: "$IMAGE_TAG,latest"
           push_image: << parameters.push_image >>
 
 
 workflows:
   
-  build:
-    jobs:
-      - build_and_push_image:
-          context: role_arn
-          push_image: false
+  # build:
+  #   jobs:
+  #     - build_and_push_image:
+  #         context: role_arn
+  #         push_image: false
 
   build_and_push_image:
     jobs:
