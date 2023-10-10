@@ -97,7 +97,7 @@ workflows:
           context: snyk
       - deploy_lambda:
           name: Deploy lambda
-          lambda_function_name : sai-test
+          lambda_function_name : sai-test1
           requires:
             - Build and push image to ECR
             - Snyk-scan for security issues
