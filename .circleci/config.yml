@@ -4,42 +4,20 @@ orbs:
   aws-cli: circleci/aws-cli@4.0
   aws-ecr: circleci/aws-ecr@9.0
 
-
 jobs:
-  build:
-    docker:
-      - image: cimg/base:stable
-    steps:
-      - setup_remote_docker:
-          version: 20.10.11
-      - checkout
-      - aws-ecr/build_image:
-          account_id: $AWS_ACCOUNT_ID
-          # auth:
-          #   - aws-cli/setup:
-          #       role_arn: $role_arn
-          #       role_session_name: ecr
-          dockerfile: Dockerfile
-          path: .
-          repo: sai-test
-          region: us-east-1
-          tag: "$CIRCLE_SHA1"
-
-
-
   build_and_push_image:
     docker:
       - image: cimg/base:stable
+
+    parameters:
+        push_image:
+          type: boolean
+          default: false
+
     steps:
       - setup_remote_docker:
           version: 20.10.11
-      - checkout
-      - run: |
-            export SHORT_COMMIT_HASH=$(echo $CIRCLE_SHA1 | cut -c 1-8)
-            export COMMIT_EPOCH=$(git show -s --format=%ct $SHORT_COMMIT_HASH)
-            export VERSION=$(date -d @$COMMIT_EPOCH +"%F").$SHORT_COMMIT_HASH
-            echo $VERSION
-         
+      - checkout               
       - aws-ecr/build_and_push_image:
           account_id: $AWS_ACCOUNT_ID
           auth:
@@ -47,17 +25,24 @@ jobs:
                 role_arn: $role_arn
                 role_session_name: ecr
           dockerfile: Dockerfile
-          push_image: true
           path: .
           repo: sai-test
           region: us-east-1
-          tag: "${VERSION}"
+          tag: "$CIRCLE_SHA1,latest"
+          push_image: << parameters.push_image >>
+
 
 workflows:
+  
+  build:
+    jobs:
+      - build_and_push_image:
+          context: role_arn
+          push_image: false
 
   build_and_push_image:
     jobs:
-      # - build:
-      #     context: role_arn
       - build_and_push_image:
           context: role_arn
+          push_image: true
+
