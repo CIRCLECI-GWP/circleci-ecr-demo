@@ -47,7 +47,7 @@ jobs:
                 role_arn: $role_arn
                 role_session_name: ecr
           dockerfile: Dockerfile
-          push_image: false
+          push_image: true
           path: .
           repo: sai-test
           region: us-east-1
