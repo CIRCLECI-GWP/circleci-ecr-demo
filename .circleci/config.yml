@@ -68,7 +68,9 @@ jobs:
           role_session_name: AWSCLI-Session
       - run:
           name: Deploying new image to lambda function
-          command: aws lambda update-function-code --function-name << parameters.lambda_function_name >> --image-uri $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/sai-test:latest --region us-east-1
+          command: |
+            echo $AWS_ACCOUNT_ID
+            aws lambda update-function-code --function-name << parameters.lambda_function_name >> --image-uri 615875458684.dkr.ecr.us-east-1.amazonaws.com/sai-test:$CIRCLE_SHA1 --region us-east-1
 
 
 workflows:
