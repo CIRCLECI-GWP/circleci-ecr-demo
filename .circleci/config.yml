@@ -101,26 +101,26 @@ workflows:
             - Build and push image to ECR
           context: snyk
       - hold: 
-          name: Approve for deploying into staging-lambda
+          name: Approve for staging-lambda deployment
           type: approval
           requires:
             - Build and push image to ECR
       - deploy_lambda:
-          name: Deploy lambda
+          name: Deploying into staging-lambda
           lambda_function_name : sai-test
           context: role_arn
           requires:
-            - Approve for deploying into staging-lambda
+            - Approve for staging-lambda deployment
 
       - hold: 
-          name: Approve for deploying into production-lambda
+          name: Approve for production-lambda deployment
           type: approval
           requires:
             - Build and push image to ECR
       - deploy_lambda:
-          name: Deploy lambda
+          name: Deploying into production-lambda
           lambda_function_name : production-lambda
           context: role_arn
           requires:
-            - Approve for deploying into production-lambda
+            - Approve for production-lambda deployment
 
