@@ -37,7 +37,7 @@ jobs:
           account_id: $AWS_ACCOUNT_ID
           auth:
             - run: 
-                command: aws sts assume-role --role-arn $role_arn --role-session-name "deployment-$CI_PROJECT_NAME"
+                command: aws sts assume-role --role-arn $role_arn --role-session-name "deployment" --region us-east-1
            # - aws-cli/setup
           dockerfile: Dockerfile
           path: .
