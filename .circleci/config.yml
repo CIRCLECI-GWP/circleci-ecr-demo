@@ -22,7 +22,7 @@ jobs:
       - checkout   
       - run: 
           name: Install Zip & Sudo
-          command: apt-get update && apt-get install -y zip sudo make
+          command: apt-get update && apt-get install -y zip sudo make docker
       - aws-cli/setup:
             role_arn: $role_arn
       - run:
@@ -34,7 +34,7 @@ jobs:
                 export COMMIT_EPOCH=$(git show -s --format=%ct $SHORT_COMMIT_HASH)
                 export VERSION=$(date -d @$COMMIT_EPOCH +"%F").$SHORT_COMMIT_HASH
                 aws codeartifact login --tool dotnet --domain onei3 --domain-owner 615875458684 --repository nuget    
-                docker build -t $(name):$(VERSION) .
+                docker build -t $name:$VERSION .
       - persist_to_workspace:
           root: ~/
           paths:
