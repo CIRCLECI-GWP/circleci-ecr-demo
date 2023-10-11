@@ -7,7 +7,7 @@ orbs:
 executors:
   docker:
     docker:
-      - image: mcr.microsoft.com/dotnet/sdk:latest
+      - image: docker:latest
 
 jobs:
 
@@ -22,7 +22,7 @@ jobs:
       - checkout   
       - run: 
           name: Install Zip & Sudo
-          command: apt-get update && apt-get install -y zip sudo make docker && docker --version
+          command: apt-get update && apt-get install -y zip sudo make && docker --version
       - aws-cli/setup:
             role_arn: $role_arn
       - run:
