@@ -2,53 +2,40 @@ version: 2.1
 
 orbs:
   aws-cli: circleci/aws-cli@4.1.1
-  aws-ecr: circleci/aws-ecr@9.0
   snyk: snyk/snyk@2.0.1 
 
 executors:
   docker:
     docker:
-      - image: cimg/base:stable
+      - image: mcr.microsoft.com/dotnet/sdk:latest
 
 jobs:
+
   build:
     executor: docker
     environment:
       AWS_DEFAULT_REGION: us-east-1
-    parameters:
-        push_image:
-          type: boolean
-          default: false
-
     steps:
       - setup_remote_docker:
           version: 20.10.11
       - checkout   
+      - run: 
+          name: Install Zip & Sudo
+          command: apt-get update && apt-get install -y zip sudo
       - aws-cli/setup:
             role_arn: $role_arn
-            role_session_name: AWSCLI-Session
       - run:
-          name: codeartifact login
+          name: Build
           command: |
-            aws codeartifact login --tool dotnet --domain onei3 --domain-owner 615875458684 --repository nuget           
-      - aws-ecr/build_and_push_image:
-          account_id: $AWS_ACCOUNT_ID
-          auth:
-              - aws-cli/role_arn_setup:
-                 profile_name: default
-                 role_arn: $role_arn
-                 
-
-          dockerfile: Dockerfile
-          path: .
-          repo: sai-test
-          region: us-east-1
-          tag: "$CIRCLE_SHA1,latest"
-          push_image: << parameters.push_image >>
+                export SHORT_COMMIT_HASH=$(echo $CIRCLE_SHA1 | cut -c 1-8)
+                export COMMIT_EPOCH=$(git show -s --format=%ct $SHORT_COMMIT_HASH)
+                export VERSION=$(date -d @$COMMIT_EPOCH +"%F").$SHORT_COMMIT_HASH
+                aws codeartifact login --tool dotnet --domain onei3 --domain-owner 615875458684 --repository nuget    
+                make image version=${VERSION} 
       - persist_to_workspace:
           root: ~/
           paths:
-            - project/
+            - project/    
 
   snyk_scan:
     executor: docker
@@ -64,7 +51,17 @@ jobs:
           additional-arguments: --prune-repeated-subdependencies --all-projects
           fail-on-issues: false
           organization: $SNYK_ORG
-
+  
+  ecr_publish:
+    #name: Publish to ECR
+    executor: docker
+    steps: 
+      - attach_workspace:
+          at: ~/
+      - run:
+         command: |
+             make publish version=${VERSION}
+      
   deploy_lambda:
     executor: docker
     parameters:
@@ -86,14 +83,23 @@ workflows:
   
   build:
     jobs:
-      - build:
+      - build: 
           context: role_arn
-          push_image: false
           filters:  
             branches:
               ignore:
                 - main
-                - master      
+                - master    
+      - ecr_publish:
+          name: Publish to ECR
+          requires:
+            - build
+          context: role_arn
+          filters:  
+            branches:
+              only:
+                - main
+                - master 
 
       - snyk_scan:
           name: Snyk-scan for security issues
@@ -101,47 +107,47 @@ workflows:
             - build
           context: snyk   
 
-  build_and_deploy_lambda:
-    jobs:
-      - build:
-          name: Build and push image to ECR
-          context: role_arn
-          push_image: true
-          filters:  
-            branches:
-              only:
-                - main
-                - master
+  # build_and_deploy_lambda:
+  #   jobs:
+  #     - build:
+  #         name: Build and push image to ECR
+  #         context: role_arn
+  #         push_image: true
+  #         filters:  
+  #           branches:
+  #             only:
+  #               - main
+  #               - master
 
-      - snyk_scan:
-          name: Snyk-scan for security issues
-          requires:
-            - Build and push image to ECR
-          context: snyk
+  #     - snyk_scan:
+  #         name: Snyk-scan for security issues
+  #         requires:
+  #           - Build and push image to ECR
+  #         context: snyk
 
-      - hold: 
-          name: Approve for staging-lambda deployment
-          type: approval
-          requires:
-            - Build and push image to ECR
+  #     - hold: 
+  #         name: Approve for staging-lambda deployment
+  #         type: approval
+  #         requires:
+  #           - Build and push image to ECR
 
-      - deploy_lambda:
-          name: Deploying into staging-lambda
-          lambda_function_name : sai-test
-          context: role_arn
-          requires:
-            - Approve for staging-lambda deployment
+  #     - deploy_lambda:
+  #         name: Deploying into staging-lambda
+  #         lambda_function_name : sai-test
+  #         context: role_arn
+  #         requires:
+  #           - Approve for staging-lambda deployment
 
-      - hold: 
-          name: Approve for production-lambda deployment
-          type: approval
-          requires:
-            - Build and push image to ECR
+  #     - hold: 
+  #         name: Approve for production-lambda deployment
+  #         type: approval
+  #         requires:
+  #           - Build and push image to ECR
 
-      - deploy_lambda:
-          name: Deploying into production-lambda
-          lambda_function_name : sai-test
-          context: role_arn
-          requires:
-            - Approve for production-lambda deployment
+  #     - deploy_lambda:
+  #         name: Deploying into production-lambda
+  #         lambda_function_name : sai-test
+  #         context: role_arn
+  #         requires:
+  #           - Approve for production-lambda deployment
 
