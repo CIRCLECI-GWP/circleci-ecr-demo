@@ -22,7 +22,7 @@ jobs:
       - checkout   
       - run: 
           name: Install Zip & Sudo
-          command: apt-get update && apt-get install -y zip sudo make docker
+          command: apt-get update && apt-get install -y zip sudo make docker $$ docker --version
       - aws-cli/setup:
             role_arn: $role_arn
       - run:
