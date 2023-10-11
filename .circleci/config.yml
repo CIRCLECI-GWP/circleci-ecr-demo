@@ -17,16 +17,14 @@ jobs:
         push_image:
           type: boolean
           default: false
-
     steps:
       - setup_remote_docker:
           version: 20.10.11
       - checkout  
       - aws-cli/setup:
           role_arn: $role_arn  
-          # role_session_name: AWSCLI-Session
       - run:
-          name: Install dotnet and setup CodeArtifact
+          name: Install Dotnet and Setting up CodeArtifact
           command: |
             sudo apt install -y apt-transport-https
             wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
@@ -72,7 +70,6 @@ jobs:
     steps:
       - aws-cli/setup:
           role_arn: $role_arn
-          role_session_name: AWSCLI-Session
       - run:
           name: Deploying new image to lambda function
           command: aws lambda update-function-code --function-name << parameters.lambda_function_name >> --image-uri 615875458684.dkr.ecr.us-east-1.amazonaws.com/sai-test:$CIRCLE_SHA1 --region us-east-1
@@ -96,37 +93,37 @@ workflows:
             - build
           context: snyk   
 
-  # build_and_deploy_lambda:
-  #   jobs:
-  #     - build:
-  #         name: Build and push image to ECR
-  #         context: role_arn
-  #         push_image: true
-  #     - snyk_scan:
-  #         name: Snyk-scan for security issues
-  #         requires:
-  #           - Build and push image to ECR
-  #         context: snyk
-  #     - hold: 
-  #         name: Approve for deploying into staging-lambda
-  #         type: approval
-  #         requires:
-  #           - Build and push image to ECR
-  #     - deploy_lambda:
-  #         name: Deploy lambda
-  #         lambda_function_name : sai-test
-  #         context: role_arn
-  #         requires:
-  #           - Approve for deploying into staging-lambda
+  build_and_deploy_lambda:
+    jobs:
+      - build:
+          name: Build and push image to ECR
+          context: role_arn
+          push_image: true
+      - snyk_scan:
+          name: Snyk-scan for security issues
+          requires:
+            - Build and push image to ECR
+          context: snyk
+      - hold: 
+          name: Approve for deploying into staging-lambda
+          type: approval
+          requires:
+            - Build and push image to ECR
+      - deploy_lambda:
+          name: Deploy lambda
+          lambda_function_name : sai-test
+          context: role_arn
+          requires:
+            - Approve for deploying into staging-lambda
 
-  #     - hold: 
-  #         name: Approve for deploying into production-lambda
-  #         type: approval
-  #         requires:
-  #           - Build and push image to ECR
-  #     - deploy_lambda:
-  #         name: Deploy lambda
-  #         lambda_function_name : production-lambda
-  #         context: role_arn
-  #         requires:
-  #           - Approve for deploying into production-lambda
+      - hold: 
+          name: Approve for deploying into production-lambda
+          type: approval
+          requires:
+            - Build and push image to ECR
+      - deploy_lambda:
+          name: Deploy lambda
+          lambda_function_name : production-lambda
+          context: role_arn
+          requires:
+            - Approve for deploying into production-lambda
