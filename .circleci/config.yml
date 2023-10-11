@@ -20,9 +20,9 @@ jobs:
       - setup_remote_docker:
           version: 20.10.11
       - checkout   
-      - run: 
-          name: Install Zip & Sudo
-          command: apt-get update && apt-get install -y zip sudo make && docker --version
+      # - run: 
+      #     name: Install Zip & Sudo
+      #     command: apt-get update && apt-get install -y zip sudo make && docker --version
       - aws-cli/setup:
             role_arn: $role_arn
       - run:
