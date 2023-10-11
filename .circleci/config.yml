@@ -15,6 +15,7 @@ jobs:
     executor: docker
     environment:
       AWS_DEFAULT_REGION: us-east-1
+      
     steps:
       - setup_remote_docker:
           version: 20.10.11
@@ -26,12 +27,14 @@ jobs:
             role_arn: $role_arn
       - run:
           name: Build
+          environment:
+            name: sai-test
           command: |
                 export SHORT_COMMIT_HASH=$(echo $CIRCLE_SHA1 | cut -c 1-8)
                 export COMMIT_EPOCH=$(git show -s --format=%ct $SHORT_COMMIT_HASH)
                 export VERSION=$(date -d @$COMMIT_EPOCH +"%F").$SHORT_COMMIT_HASH
                 aws codeartifact login --tool dotnet --domain onei3 --domain-owner 615875458684 --repository nuget    
-                make image version=${VERSION} 
+                docker build -t $(name):$(VERSION) .
       - persist_to_workspace:
           root: ~/
           paths:
