@@ -54,24 +54,6 @@ jobs:
           fail-on-issues: false
           organization: $SNYK_ORG
 
-  ecr_push:
-    executor: docker
-    steps:
-      - setup_remote_docker:
-          version: 20.10.11
-      - attach_workspace:
-          at: ~/
-      - aws-cli/setup:
-            role_arn: $role_arn
-            role_session_name: AWSCLI-Session
-      - aws-ecr/push_image:
-          account_id: $AWS_ACCOUNT_ID
-          repo: sai-test
-          region: us-east-1
-          tag: "$CIRCLE_SHA1,latest"
-
-
-
   deploy_lambda:
     executor: docker
     environment:
@@ -107,20 +89,6 @@ workflows:
             - build
           context: snyk   
 
-
-      - hold:
-          name: Approve to push image to ECR
-          type: approval
-          requires:
-            - Snyk-scan for security issues
-      
-      - ecr_push:
-          name: Push image to ECR
-          requires:
-            - Approve to push image to ECR
-          context: role_arn
-
-
   build_and_deploy_lambda:
     jobs:
       - build:
@@ -132,10 +100,26 @@ workflows:
           requires:
             - Build and push image to ECR
           context: snyk
-      - deploy_lambda:
-          name: Deploy lambda
-          lambda_function_name : sai-test1
+      - hold: 
+          name: Approve for deploying into staging-lambda
+          type: approval
           requires:
             - Build and push image to ECR
-            - Snyk-scan for security issues
+      - deploy_lambda:
+          name: Deploy lambda
+          lambda_function_name : sai-test
           context: role_arn
+          requires:
+            - Approve for deploying into staging-lambda
+
+      - hold: 
+          name: Approve for deploying into production-lambda
+          type: approval
+          requires:
+            - Build and push image to ECR
+      - deploy_lambda:
+          name: Deploy lambda
+          lambda_function_name : production-lambda
+          context: role_arn
+          requires:
+            - Approve for deploying into production-lambda
