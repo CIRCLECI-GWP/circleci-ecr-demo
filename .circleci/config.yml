@@ -2,43 +2,42 @@ version: 2.1
 
 orbs:
   aws-cli: circleci/aws-cli@4.1.1
+  aws-ecr: circleci/aws-ecr@9.0
   snyk: snyk/snyk@2.0.1 
 
 executors:
   docker:
     docker:
-      - image: docker:latest
+      - image: cimg/base:stable
 
 jobs:
-
   build:
     executor: docker
-    environment:
-      AWS_DEFAULT_REGION: us-east-1
-      
+    parameters:
+        push_image:
+          type: boolean
+          default: false
+
     steps:
       - setup_remote_docker:
           version: 20.10.11
-      - checkout   
-      # - run: 
-      #     name: Install Zip & Sudo
-      #     command: apt-get update && apt-get install -y zip sudo make && docker --version
-      - aws-cli/setup:
-            role_arn: $role_arn
-      - run:
-          name: Build
-          environment:
-            name: sai-test
-          command: |
-                export SHORT_COMMIT_HASH=$(echo $CIRCLE_SHA1 | cut -c 1-8)
-                export COMMIT_EPOCH=$(git show -s --format=%ct $SHORT_COMMIT_HASH)
-                export VERSION=$(date -d @$COMMIT_EPOCH +"%F").$SHORT_COMMIT_HASH
-                aws codeartifact login --tool dotnet --domain onei3 --domain-owner 615875458684 --repository nuget    
-                docker build -t $name:$VERSION .
+      - checkout               
+      - aws-ecr/build_and_push_image:
+          account_id: $AWS_ACCOUNT_ID
+          auth:
+            - aws-cli/setup:
+                role_arn: $role_arn
+                role_session_name: AWSCLI-Session
+          dockerfile: Dockerfile
+          path: .
+          repo: sai-test
+          region: us-east-1
+          tag: "$CIRCLE_SHA1,latest"
+          push_image: << parameters.push_image >>
       - persist_to_workspace:
           root: ~/
           paths:
-            - project/    
+            - project/
 
   snyk_scan:
     executor: docker
@@ -54,19 +53,29 @@ jobs:
           additional-arguments: --prune-repeated-subdependencies --all-projects
           fail-on-issues: false
           organization: $SNYK_ORG
-  
-  ecr_publish:
-    #name: Publish to ECR
+
+  ecr_push:
     executor: docker
-    steps: 
+    steps:
+      - setup_remote_docker:
+          version: 20.10.11
       - attach_workspace:
           at: ~/
-      - run:
-         command: |
-             make publish version=${VERSION}
-      
+      - aws-cli/setup:
+            role_arn: $role_arn
+            role_session_name: AWSCLI-Session
+      - aws-ecr/push_image:
+          account_id: $AWS_ACCOUNT_ID
+          repo: sai-test
+          region: us-east-1
+          tag: "$CIRCLE_SHA1,latest"
+
+
+
   deploy_lambda:
     executor: docker
+    environment:
+      AWS_ACCOUNT_ID: 615875458684
     parameters:
       lambda_function_name:
         type: string
@@ -77,32 +86,20 @@ jobs:
           role_session_name: AWSCLI-Session
       - run:
           name: Deploying new image to lambda function
-          command: |
-            echo $AWS_ACCOUNT_ID
-            aws lambda update-function-code --function-name << parameters.lambda_function_name >> --image-uri 615875458684.dkr.ecr.us-east-1.amazonaws.com/sai-test:$CIRCLE_SHA1 --region us-east-1
+          command: aws lambda update-function-code --function-name << parameters.lambda_function_name >> --image-uri $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/sai-test:$CIRCLE_SHA1 --region us-east-1
 
 
 workflows:
   
   build:
     jobs:
-      - build: 
+      - build:
           context: role_arn
+          push_image: false
           filters:  
             branches:
               ignore:
-                - main
-                - master    
-      - ecr_publish:
-          name: Publish to ECR
-          requires:
-            - build
-          context: role_arn
-          filters:  
-            branches:
-              only:
-                - main
-                - master 
+                - master      
 
       - snyk_scan:
           name: Snyk-scan for security issues
@@ -110,47 +107,35 @@ workflows:
             - build
           context: snyk   
 
-  # build_and_deploy_lambda:
-  #   jobs:
-  #     - build:
-  #         name: Build and push image to ECR
-  #         context: role_arn
-  #         push_image: true
-  #         filters:  
-  #           branches:
-  #             only:
-  #               - main
-  #               - master
 
-  #     - snyk_scan:
-  #         name: Snyk-scan for security issues
-  #         requires:
-  #           - Build and push image to ECR
-  #         context: snyk
+      - hold:
+          name: Approve to push image to ECR
+          type: approval
+          requires:
+            - Snyk-scan for security issues
+      
+      - ecr_push:
+          name: Push image to ECR
+          requires:
+            - Approve to push image to ECR
+          context: role_arn
 
-  #     - hold: 
-  #         name: Approve for staging-lambda deployment
-  #         type: approval
-  #         requires:
-  #           - Build and push image to ECR
 
-  #     - deploy_lambda:
-  #         name: Deploying into staging-lambda
-  #         lambda_function_name : sai-test
-  #         context: role_arn
-  #         requires:
-  #           - Approve for staging-lambda deployment
-
-  #     - hold: 
-  #         name: Approve for production-lambda deployment
-  #         type: approval
-  #         requires:
-  #           - Build and push image to ECR
-
-  #     - deploy_lambda:
-  #         name: Deploying into production-lambda
-  #         lambda_function_name : sai-test
-  #         context: role_arn
-  #         requires:
-  #           - Approve for production-lambda deployment
-
+  build_and_deploy_lambda:
+    jobs:
+      - build:
+          name: Build and push image to ECR
+          context: role_arn
+          push_image: true
+      - snyk_scan:
+          name: Snyk-scan for security issues
+          requires:
+            - Build and push image to ECR
+          context: snyk
+      - deploy_lambda:
+          name: Deploy lambda
+          lambda_function_name : sai-test1
+          requires:
+            - Build and push image to ECR
+            - Snyk-scan for security issues
+          context: role_arn
