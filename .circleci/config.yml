@@ -24,6 +24,7 @@ jobs:
       - checkout  
       - aws-cli/setup:
           role_arn: $role_arn  
+          role_session_name: AWSCLI-Session
       - run:
           name: Install dotnet and setup CodeArtifact
           command: |
@@ -35,9 +36,10 @@ jobs:
       - aws-ecr/build_and_push_image:
           account_id: $AWS_ACCOUNT_ID
           auth:
-            - aws-cli/setup:
-                role_arn: $role_arn
-                role_session_name: AWSCLI-Session
+            - aws-cli/setup
+                # role_arn: $role_arn
+                # profile_name: default
+                # #role_session_name: AWSCLI-Session
           dockerfile: Dockerfile
           path: .
           repo: sai-test
@@ -97,37 +99,37 @@ workflows:
             - build
           context: snyk   
 
-  build_and_deploy_lambda:
-    jobs:
-      - build:
-          name: Build and push image to ECR
-          context: role_arn
-          push_image: true
-      - snyk_scan:
-          name: Snyk-scan for security issues
-          requires:
-            - Build and push image to ECR
-          context: snyk
-      - hold: 
-          name: Approve for deploying into staging-lambda
-          type: approval
-          requires:
-            - Build and push image to ECR
-      - deploy_lambda:
-          name: Deploy lambda
-          lambda_function_name : sai-test
-          context: role_arn
-          requires:
-            - Approve for deploying into staging-lambda
+  # build_and_deploy_lambda:
+  #   jobs:
+  #     - build:
+  #         name: Build and push image to ECR
+  #         context: role_arn
+  #         push_image: true
+  #     - snyk_scan:
+  #         name: Snyk-scan for security issues
+  #         requires:
+  #           - Build and push image to ECR
+  #         context: snyk
+  #     - hold: 
+  #         name: Approve for deploying into staging-lambda
+  #         type: approval
+  #         requires:
+  #           - Build and push image to ECR
+  #     - deploy_lambda:
+  #         name: Deploy lambda
+  #         lambda_function_name : sai-test
+  #         context: role_arn
+  #         requires:
+  #           - Approve for deploying into staging-lambda
 
-      - hold: 
-          name: Approve for deploying into production-lambda
-          type: approval
-          requires:
-            - Build and push image to ECR
-      - deploy_lambda:
-          name: Deploy lambda
-          lambda_function_name : production-lambda
-          context: role_arn
-          requires:
-            - Approve for deploying into production-lambda
+  #     - hold: 
+  #         name: Approve for deploying into production-lambda
+  #         type: approval
+  #         requires:
+  #           - Build and push image to ECR
+  #     - deploy_lambda:
+  #         name: Deploy lambda
+  #         lambda_function_name : production-lambda
+  #         context: role_arn
+  #         requires:
+  #           - Approve for deploying into production-lambda
