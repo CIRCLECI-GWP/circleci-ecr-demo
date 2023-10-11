@@ -1,15 +1,129 @@
 version: 2.1
 
 orbs:
-  aws-ecr: circleci/aws-ecr@8.1.3
+  aws-cli: circleci/aws-cli@4.1.1
+  aws-ecr: circleci/aws-ecr@9.0
+  snyk: snyk/snyk@2.0.1 
 
-workflows:
-  build_and_push_image:
-    jobs:
-      - aws-ecr/build-and-push-image:
-          context: aws-dev
-          create-repo: true
+executors:
+  docker:
+    docker:
+      - image: cimg/base:stable
+
+jobs:
+  build:
+    executor: docker
+    parameters:
+        push_image:
+          type: boolean
+          default: false
+    steps:
+      - setup_remote_docker:
+          version: 20.10.11
+      - checkout  
+      - aws-cli/setup:
+          role_arn: $role_arn  
+      - run:
+          name: Install Dotnet and Setting up CodeArtifact
+          command: |
+            sudo apt install -y apt-transport-https
+            wget https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+            sudo dpkg -i packages-microsoft-prod.deb
+            sudo apt update && sudo apt install -y dotnet-sdk-6.0
+            aws codeartifact login --tool dotnet --domain onei3 --domain-owner 615875458684 --repository nuget --region us-east-1
+      - aws-ecr/build_and_push_image:
+          account_id: $AWS_ACCOUNT_ID
+          auth:            
+           - aws-cli/setup
           dockerfile: Dockerfile
           path: .
-          repo: circleci-ecr-demo
-          tag: "$CIRCLE_SHA1"
+          repo: sai-test
+          region: us-east-1
+          tag: "$CIRCLE_SHA1,latest"
+          push_image: << parameters.push_image >>
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - project/
+
+  snyk_scan:
+    executor: docker
+    parameters:
+      monitor-on-build:
+        type: boolean
+        default: false
+    steps:
+      - attach_workspace:
+          at: ~/
+      - snyk/scan:
+          monitor-on-build: << parameters.monitor-on-build >>
+          additional-arguments: --prune-repeated-subdependencies --all-projects
+          fail-on-issues: false
+          organization: $SNYK_ORG
+
+  deploy_lambda:
+    executor: docker
+    parameters:
+      lambda_function_name:
+        type: string
+        default: none
+    steps:
+      - aws-cli/setup:
+          role_arn: $role_arn
+      - run:
+          name: Deploying new image to lambda function
+          command: aws lambda update-function-code --function-name << parameters.lambda_function_name >> --image-uri 615875458684.dkr.ecr.us-east-1.amazonaws.com/sai-test:$CIRCLE_SHA1 --region us-east-1
+
+
+workflows:
+  
+  build:
+    jobs:
+      - build:
+          context: role_arn
+          push_image: false
+          filters:  
+            branches:
+              ignore:
+                - master      
+
+      - snyk_scan:
+          name: Snyk-scan for security issues
+          requires:
+            - build
+          context: snyk   
+
+  build_and_deploy_lambda:
+    jobs:
+      - build:
+          name: Build and push image to ECR
+          context: role_arn
+          push_image: true
+      - snyk_scan:
+          name: Snyk-scan for security issues
+          requires:
+            - Build and push image to ECR
+          context: snyk
+      - hold: 
+          name: Approve for deploying into staging-lambda
+          type: approval
+          requires:
+            - Build and push image to ECR
+      - deploy_lambda:
+          name: Deploy lambda
+          lambda_function_name : sai-test
+          context: role_arn
+          requires:
+            - Approve for deploying into staging-lambda
+
+      - hold: 
+          name: Approve for deploying into production-lambda
+          type: approval
+          requires:
+            - Build and push image to ECR
+      - deploy_lambda:
+          name: Deploy lambda
+          lambda_function_name : production-lambda
+          context: role_arn
+          requires:
+            - Approve for deploying into production-lambda
