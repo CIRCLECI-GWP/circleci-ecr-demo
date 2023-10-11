@@ -24,7 +24,7 @@ jobs:
       - checkout  
       - aws-cli/setup:
           role_arn: $role_arn  
-          role_session_name: AWSCLI-Session
+          # role_session_name: AWSCLI-Session
       - run:
           name: Install dotnet and setup CodeArtifact
           command: |
@@ -35,10 +35,8 @@ jobs:
             aws codeartifact login --tool dotnet --domain onei3 --domain-owner 615875458684 --repository nuget --region us-east-1
       - aws-ecr/build_and_push_image:
           account_id: $AWS_ACCOUNT_ID
-          auth:
-            - run: 
-                command: aws sts assume-role --role-arn $role_arn --role-session-name "deployment" --region us-east-1
-           # - aws-cli/setup
+          auth:            
+           - aws-cli/setup
           dockerfile: Dockerfile
           path: .
           repo: sai-test
